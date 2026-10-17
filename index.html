@@ -1,0 +1,1430 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>푸르미 문구점 POS - 율천 화폐 결제 시스템</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
+  <style>
+    /* Toss Design System (TDS) 기반 토큰 정의 */
+    :root {
+      --primary: #3182f6;
+      --primary-hover: #2272eb;
+      --canvas: #ffffff;
+      --foreground: #191f28;
+      --body: #4e5968;
+      --muted: #8b95a1;
+      --surface: #f2f4f6;
+      --border: #e5e8eb;
+      --on-primary: #ffffff;
+      --weak-background: #e8f3ff;
+      --weak-foreground: #1b64da;
+      --danger: #e42939;
+      --danger-bg: #ffeeee;
+      --success: #03b26c;
+      --success-bg: #f0faf6;
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --radius-xl: 20px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: Pretendard, "Toss Product Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      background-color: var(--surface);
+      color: var(--foreground);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    /* 상단 헤더 */
+    header {
+      background: var(--canvas);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 28px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-logo {
+      width: 40px;
+      height: 40px;
+      background: var(--weak-background);
+      color: var(--primary);
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 20px;
+    }
+
+    .brand-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--foreground);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .badge-sub {
+      background: var(--weak-background);
+      color: var(--weak-foreground);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 20px;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    /* TDS 컴포넌트: 버튼 */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      outline: none;
+      white-space: nowrap;
+    }
+
+    .btn:active {
+      transform: scale(0.96);
+    }
+
+    .btn-md {
+      height: 44px;
+      padding: 0 18px;
+      border-radius: var(--radius-md);
+      font-size: 15px;
+    }
+
+    .btn-lg {
+      height: 54px;
+      padding: 0 24px;
+      border-radius: var(--radius-lg);
+      font-size: 17px;
+    }
+
+    .btn-primary {
+      background-color: var(--primary);
+      color: var(--on-primary);
+    }
+
+    .btn-primary:hover {
+      background-color: var(--primary-hover);
+    }
+
+    .btn-secondary {
+      background-color: var(--surface);
+      color: var(--body);
+    }
+
+    .btn-secondary:hover {
+      background-color: #e5e8eb;
+      color: var(--foreground);
+    }
+
+    .btn-weak {
+      background-color: var(--weak-background);
+      color: var(--weak-foreground);
+    }
+
+    .btn-weak:hover {
+      background-color: #d8eaff;
+    }
+
+    .btn-danger-weak {
+      background-color: var(--danger-bg);
+      color: var(--danger);
+    }
+
+    .btn-danger-weak:hover {
+      background-color: #ffd4d6;
+    }
+
+    /* 레이아웃 메인 */
+    main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 440px;
+      gap: 20px;
+      padding: 20px 28px;
+      overflow: hidden;
+    }
+
+    /* 좌측 영역: 바코드 스캔 + 상품 테이블 */
+    .left-section {
+      background: var(--canvas);
+      border-radius: var(--radius-xl);
+      border: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+    }
+
+    .scan-bar {
+      padding: 18px 24px;
+      border-bottom: 1px solid var(--border);
+      background: var(--canvas);
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .scan-input-wrapper {
+      flex: 1;
+      position: relative;
+    }
+
+    .scan-icon {
+      position: absolute;
+      left: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+      font-size: 18px;
+    }
+
+    .scan-input {
+      width: 100%;
+      height: 52px;
+      padding: 0 16px 0 46px;
+      border-radius: var(--radius-md);
+      border: 2px solid var(--border);
+      font-size: 16px;
+      font-weight: 500;
+      color: var(--foreground);
+      background: var(--surface);
+      outline: none;
+      transition: all 0.2s;
+    }
+
+    .scan-input:focus {
+      border-color: var(--primary);
+      background: var(--canvas);
+      box-shadow: 0 0 0 3px rgba(49, 130, 246, 0.15);
+    }
+
+    .scan-indicator {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--success);
+      padding: 6px 12px;
+      background: var(--success-bg);
+      border-radius: 20px;
+    }
+
+    .scan-indicator-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0% { opacity: 0.4; transform: scale(0.9); }
+      50% { opacity: 1; transform: scale(1.1); }
+      100% { opacity: 0.4; transform: scale(0.9); }
+    }
+
+    /* 장바구니 테이블 */
+    .cart-wrapper {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0;
+    }
+
+    .cart-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+
+    .cart-table th {
+      position: sticky;
+      top: 0;
+      background: #fafbfc;
+      padding: 14px 24px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+      z-index: 2;
+    }
+
+    .cart-table td {
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--border);
+      font-size: 15px;
+      vertical-align: middle;
+    }
+
+    .cart-table tr:hover {
+      background-color: #fafbfc;
+    }
+
+    .item-name {
+      font-weight: 600;
+      color: var(--foreground);
+      font-size: 16px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .item-barcode {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 2px;
+      font-family: monospace;
+    }
+
+    .qty-control {
+      display: inline-flex;
+      align-items: center;
+      background: var(--surface);
+      border-radius: var(--radius-sm);
+      padding: 2px;
+    }
+
+    .qty-btn {
+      width: 32px;
+      height: 32px;
+      border: none;
+      background: var(--canvas);
+      color: var(--foreground);
+      font-size: 16px;
+      font-weight: 700;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    }
+
+    .qty-btn:active {
+      background: #e5e8eb;
+    }
+
+    .qty-val {
+      min-width: 36px;
+      text-align: center;
+      font-weight: 700;
+      font-size: 15px;
+    }
+
+    .price-col {
+      font-weight: 700;
+      color: var(--foreground);
+      font-size: 16px;
+    }
+
+    .empty-cart-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: var(--muted);
+      gap: 12px;
+    }
+
+    .empty-cart-icon {
+      font-size: 48px;
+      color: #d1d6db;
+    }
+
+    /* 빠른 상품 추천 칩 바 (하단) */
+    .quick-items {
+      padding: 12px 24px;
+      background: #fafbfc;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow-x: auto;
+    }
+
+    .quick-item-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      white-space: nowrap;
+      margin-right: 4px;
+    }
+
+    .quick-chip {
+      background: var(--canvas);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--body);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+      transition: all 0.15s;
+    }
+
+    .quick-chip:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+      background: var(--weak-background);
+    }
+
+    /* 우측 영역: 결제 패널 */
+    .right-section {
+      background: var(--canvas);
+      border-radius: var(--radius-xl);
+      border: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      padding: 24px;
+      gap: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+    }
+
+    .summary-card {
+      background: var(--surface);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: var(--body);
+      font-size: 15px;
+    }
+
+    .total-row {
+      margin-top: 6px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+    }
+
+    .total-label {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--foreground);
+    }
+
+    .total-amount {
+      font-size: 32px;
+      font-weight: 800;
+      color: var(--primary);
+      letter-spacing: -0.5px;
+    }
+
+    .payment-form {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .input-label-group {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .input-label {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--body);
+    }
+
+    /* 율천 화폐 빠른 단위 버튼 */
+    .currency-presets {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .preset-btn {
+      height: 44px;
+      background: var(--canvas);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-md);
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--foreground);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .preset-btn:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+      background: var(--weak-background);
+    }
+
+    .preset-btn:active {
+      transform: scale(0.96);
+    }
+
+    .received-input-wrapper {
+      position: relative;
+    }
+
+    .received-input {
+      width: 100%;
+      height: 56px;
+      border-radius: var(--radius-lg);
+      border: 2px solid var(--border);
+      padding: 0 54px 0 20px;
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--foreground);
+      outline: none;
+      transition: all 0.2s;
+      background: var(--surface);
+    }
+
+    .received-input:focus {
+      border-color: var(--primary);
+      background: var(--canvas);
+      box-shadow: 0 0 0 3px rgba(49, 130, 246, 0.15);
+    }
+
+    .currency-suffix {
+      position: absolute;
+      right: 20px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--muted);
+    }
+
+    /* 거스름돈 카드 */
+    .change-box {
+      border-radius: var(--radius-lg);
+      padding: 18px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: all 0.2s;
+    }
+
+    .change-box.normal {
+      background: #fafbfc;
+      border: 1px solid var(--border);
+    }
+
+    .change-box.ready {
+      background: var(--success-bg);
+      border: 1.5px solid var(--success);
+    }
+
+    .change-box.shortage {
+      background: var(--danger-bg);
+      border: 1.5px solid var(--danger);
+    }
+
+    .change-title {
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .change-box.normal .change-title { color: var(--body); }
+    .change-box.ready .change-title { color: var(--success); }
+    .change-box.shortage .change-title { color: var(--danger); }
+
+    .change-amount {
+      font-size: 28px;
+      font-weight: 800;
+    }
+
+    .change-box.normal .change-amount { color: var(--muted); }
+    .change-box.ready .change-amount { color: var(--success); }
+    .change-box.shortage .change-amount { color: var(--danger); }
+
+    /* 결제 완료 버튼 */
+    .action-group {
+      margin-top: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .btn-pay {
+      width: 100%;
+      height: 56px;
+      border-radius: var(--radius-lg);
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .btn-reset {
+      width: 100%;
+      height: 42px;
+      font-size: 14px;
+    }
+
+    /* 모달 */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.2s ease;
+      backdrop-filter: blur(4px);
+    }
+
+    .modal-overlay.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .modal-card {
+      background: var(--canvas);
+      border-radius: var(--radius-xl);
+      width: 90%;
+      max-width: 680px;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.12);
+      transform: translateY(20px);
+      transition: transform 0.25s ease;
+    }
+
+    .modal-overlay.active .modal-card {
+      transform: translateY(0);
+    }
+
+    .modal-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-title {
+      font-size: 19px;
+      font-weight: 700;
+      color: var(--foreground);
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 22px;
+      color: var(--muted);
+      cursor: pointer;
+    }
+
+    .modal-body {
+      padding: 24px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    /* 관리자 폼 스타일 */
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--body);
+      margin-bottom: 6px;
+    }
+
+    .form-control {
+      width: 100%;
+      height: 44px;
+      padding: 0 14px;
+      border-radius: var(--radius-md);
+      border: 1.5px solid var(--border);
+      font-size: 15px;
+      outline: none;
+      background: var(--surface);
+    }
+
+    .form-control:focus {
+      border-color: var(--primary);
+      background: var(--canvas);
+    }
+
+    /* 토스트 알림 */
+    .toast-container {
+      position: fixed;
+      top: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 2000;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+    }
+
+    .toast {
+      background: var(--foreground);
+      color: #ffffff;
+      padding: 12px 24px;
+      border-radius: 30px;
+      font-size: 15px;
+      font-weight: 600;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+      animation: fadeInDown 0.3s forwards;
+    }
+
+    @keyframes fadeInDown {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 헤더 -->
+  <header>
+    <div class="brand-group">
+      <div class="brand-logo">🌿</div>
+      <div class="brand-title">
+        푸르미 문구점 POS
+        <span class="badge-sub">율천 화폐 전용</span>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-md btn-secondary" onclick="openSalesModal()">📊 매출 통계</button>
+      <button class="btn btn-md btn-weak" onclick="openProductModal()">📦 상품 관리</button>
+    </div>
+  </header>
+
+  <!-- 메인 레이아웃 -->
+  <main>
+    <!-- 좌측: 바코드 스캔 및 장바구니 -->
+    <section class="left-section">
+      <!-- 바코드 스캐너 입력바 -->
+      <div class="scan-bar">
+        <div class="scan-input-wrapper">
+          <span class="scan-icon">🔍</span>
+          <input 
+            type="text" 
+            id="barcodeInput" 
+            class="scan-input" 
+            placeholder="바코드를 스캔하거나 바코드 번호를 입력하세요 (Enter)" 
+            autocomplete="off"
+            autofocus
+          >
+        </div>
+        <div class="scan-indicator">
+          <div class="scan-indicator-dot"></div>
+          스캐너 대기 중
+        </div>
+      </div>
+
+      <!-- 장바구니 테이블 -->
+      <div class="cart-wrapper">
+        <table class="cart-table">
+          <thead>
+            <tr>
+              <th style="width: 42%;">상품명 / 바코드</th>
+              <th style="width: 18%;">단가</th>
+              <th style="width: 22%;">수량</th>
+              <th style="width: 18%; text-align: right;">합계</th>
+            </tr>
+          </thead>
+          <tbody id="cartTableBody">
+            <!-- 렌더링 영역 -->
+          </tbody>
+        </table>
+        <div id="emptyCartMessage" class="empty-cart-state" style="display: none;">
+          <div class="empty-cart-icon">🛒</div>
+          <div style="font-size: 16px; font-weight: 600;">장바구니가 비어 있습니다</div>
+          <div style="font-size: 14px;">바코드 리더기로 상품을 스캔해 주세요</div>
+        </div>
+      </div>
+
+      <!-- 하단 빠른 선택 칩 -->
+      <div class="quick-items">
+        <span class="quick-item-label">빠른 담기:</span>
+        <div id="quickItemsContainer" style="display: flex; gap: 8px;">
+          <!-- 즐겨찾기 상품 칩 -->
+        </div>
+      </div>
+    </section>
+
+    <!-- 우측: 결제 및 거스름돈 계산 패널 -->
+    <section class="right-section">
+      <div class="summary-card">
+        <div class="summary-row">
+          <span>총 품목 종류</span>
+          <span id="summaryItemCount" style="font-weight: 600;">0 종</span>
+        </div>
+        <div class="summary-row">
+          <span>총 구매 수량</span>
+          <span id="summaryTotalQty" style="font-weight: 600;">0 개</span>
+        </div>
+        <div class="total-row">
+          <span class="total-label">총 결제 금액</span>
+          <span class="total-amount"><span id="totalAmount">0</span> <small style="font-size: 20px;">율</small></span>
+        </div>
+      </div>
+
+      <div class="payment-form">
+        <div class="input-label-group">
+          <label class="input-label">받은 율천 화폐</label>
+          <span style="font-size: 13px; color: var(--muted); cursor: pointer;" onclick="clearReceived()">초기화</span>
+        </div>
+
+        <!-- 빠른 지폐 입력 버튼 -->
+        <div class="currency-presets">
+          <button class="preset-btn" onclick="addReceived(100)">+ 100율</button>
+          <button class="preset-btn" onclick="addReceived(500)">+ 500율</button>
+          <button class="preset-btn" onclick="addReceived(1000)">+ 1,000율</button>
+          <button class="preset-btn" onclick="addReceived(2000)">+ 2,000율</button>
+          <button class="preset-btn" onclick="addReceived(5000)">+ 5,000율</button>
+          <button class="preset-btn" onclick="setExactAmount()">딱 맞게</button>
+        </div>
+
+        <div class="received-input-wrapper">
+          <input 
+            type="number" 
+            id="receivedInput" 
+            class="received-input" 
+            placeholder="0" 
+            min="0"
+          >
+          <span class="currency-suffix">율</span>
+        </div>
+
+        <!-- 거스름돈 안내 박스 -->
+        <div id="changeBox" class="change-box normal">
+          <span class="change-title" id="changeTitle">거스름돈</span>
+          <span class="change-amount"><span id="changeAmount">0</span> <small style="font-size: 18px;">율</small></span>
+        </div>
+      </div>
+
+      <div class="action-group">
+        <button id="btnCompletePay" class="btn btn-primary btn-pay" onclick="completePayment()">
+          결제 완료 (F2 / Enter)
+        </button>
+        <button class="btn btn-secondary btn-reset" onclick="resetCart()">
+          장바구니 비우기 (ESC)
+        </button>
+      </div>
+    </section>
+  </main>
+
+  <!-- 상품 관리 모달 -->
+  <div id="productModal" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title">📦 상품 목록 및 등록</div>
+        <button class="modal-close" onclick="closeProductModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <!-- 새 상품 추가 폼 -->
+        <form id="newProductForm" onsubmit="handleCreateProduct(event)" style="background: var(--surface); padding: 18px; border-radius: var(--radius-lg); margin-bottom: 24px;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-group">
+              <label class="form-label">바코드 번호 *</label>
+              <input type="text" id="newProdBarcode" class="form-control" placeholder="바코드 스캔 또는 입력" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">상품명 *</label>
+              <input type="text" id="newProdName" class="form-control" placeholder="예: 젤펜 세트" required>
+            </div>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-group">
+              <label class="form-label">가격 (율천 화폐 단위) *</label>
+              <input type="number" id="newProdPrice" class="form-control" placeholder="예: 500" min="0" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">카테고리</label>
+              <input type="text" id="newProdCategory" class="form-control" placeholder="예: 필기구, 간식">
+            </div>
+          </div>
+          <button type="submit" class="btn btn-md btn-primary" style="width: 100%;">새 상품 등록</button>
+        </form>
+
+        <h4 style="font-size: 15px; margin-bottom: 12px; color: var(--foreground);">등록된 상품 목록 (<span id="totalProductCount">0</span>개)</h4>
+        <div style="max-height: 280px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius-md);">
+          <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 14px;">
+            <thead style="background: #fafbfc; border-bottom: 1px solid var(--border);">
+              <tr>
+                <th style="padding: 10px 14px;">바코드</th>
+                <th style="padding: 10px 14px;">상품명</th>
+                <th style="padding: 10px 14px;">가격</th>
+                <th style="padding: 10px 14px; text-align: right;">관리</th>
+              </tr>
+            </thead>
+            <tbody id="productListBody">
+              <!-- 상품 목록 렌더링 -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 매출 통계 모달 -->
+  <div id="salesModal" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title">📊 오늘의 매출 집계</div>
+        <button class="modal-close" onclick="closeSalesModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px;">
+          <div style="background: var(--weak-background); padding: 20px; border-radius: var(--radius-lg); text-align: center;">
+            <div style="color: var(--weak-foreground); font-size: 14px; font-weight: 600;">총 판매액</div>
+            <div style="font-size: 28px; font-weight: 800; color: var(--primary); margin-top: 6px;">
+              <span id="salesTotalRevenue">0</span> <small style="font-size: 18px;">율</small>
+            </div>
+          </div>
+          <div style="background: var(--surface); padding: 20px; border-radius: var(--radius-lg); text-align: center;">
+            <div style="color: var(--body); font-size: 14px; font-weight: 600;">총 결제 건수</div>
+            <div style="font-size: 28px; font-weight: 800; color: var(--foreground); margin-top: 6px;">
+              <span id="salesTotalOrders">0</span> <small style="font-size: 18px;">건</small>
+            </div>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <h4 style="font-size: 15px; color: var(--foreground);">최근 결제 내역</h4>
+          <button class="btn btn-md btn-secondary" onclick="exportSalesCSV()" style="font-size: 13px; height: 34px;">📥 엑셀(CSV) 다운로드</button>
+        </div>
+
+        <div style="max-height: 280px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius-md);">
+          <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 13px;">
+            <thead style="background: #fafbfc; border-bottom: 1px solid var(--border);">
+              <tr>
+                <th style="padding: 10px 14px;">시간</th>
+                <th style="padding: 10px 14px;">품목 요약</th>
+                <th style="padding: 10px 14px;">결제액</th>
+                <th style="padding: 10px 14px; text-align: right;">취소</th>
+              </tr>
+            </thead>
+            <tbody id="salesHistoryBody">
+              <!-- 판매 내역 렌더링 -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 토스트 컨테이너 -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <script>
+    // 기본 샘플 상품 (푸르미 문구점 기본 품목)
+    const DEFAULT_PRODUCTS = [
+      { barcode: '880123456001', name: '푸르미 지우개', price: 200, category: '문구' },
+      { barcode: '880123456002', name: '캐릭터 흑연연필 (2자루)', price: 300, category: '문구' },
+      { barcode: '880123456003', name: '3색 젤펜', price: 500, category: '문구' },
+      { barcode: '880123456004', name: '율천 스프링 줄노트', price: 800, category: '노트' },
+      { barcode: '880123456005', name: '수정 테이프', price: 1000, category: '문구' },
+      { barcode: '880123456006', name: '미니 형광펜 세트', price: 1200, category: '문구' },
+      { barcode: '880123456007', name: '간식 스티커팩', price: 500, category: '팬시' },
+      { barcode: '880123456008', name: '푸르미 클리어파일', price: 700, category: '파일' }
+    ];
+
+    // 상태 관리
+    let products = [];
+    let cart = []; // [{ barcode, name, price, qty }]
+    let salesHistory = [];
+
+    // 로컬 스토리지 초기화 및 로드
+    function initApp() {
+      const savedProducts = localStorage.getItem('purumi_products');
+      if (savedProducts) {
+        try { products = JSON.parse(savedProducts); } catch(e) { products = DEFAULT_PRODUCTS; }
+      } else {
+        products = DEFAULT_PRODUCTS;
+        saveProducts();
+      }
+
+      const savedSales = localStorage.getItem('purumi_sales');
+      if (savedSales) {
+        try { salesHistory = JSON.parse(savedSales); } catch(e) { salesHistory = []; }
+      }
+
+      renderCart();
+      renderQuickChips();
+      setupEventListeners();
+      focusBarcodeInput();
+    }
+
+    function saveProducts() {
+      localStorage.setItem('purumi_products', JSON.stringify(products));
+      renderQuickChips();
+    }
+
+    function saveSales() {
+      localStorage.setItem('purumi_sales', JSON.stringify(salesHistory));
+    }
+
+    // 바코드 입력 포커스 유지
+    function focusBarcodeInput() {
+      const barcodeInput = document.getElementById('barcodeInput');
+      if (document.activeElement !== document.getElementById('receivedInput') &&
+          !document.getElementById('productModal').classList.contains('active') &&
+          !document.getElementById('salesModal').classList.contains('active')) {
+        barcodeInput.focus();
+      }
+    }
+
+    // 이벤트 리스너 설정
+    function setupEventListeners() {
+      const barcodeInput = document.getElementById('barcodeInput');
+      barcodeInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          const code = barcodeInput.value.trim();
+          if (code) {
+            handleScanBarcode(code);
+            barcodeInput.value = '';
+          }
+        }
+      });
+
+      const receivedInput = document.getElementById('receivedInput');
+      receivedInput.addEventListener('input', calculateChange);
+      receivedInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          completePayment();
+        }
+      });
+
+      // 단축키 설정
+      window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          if (document.getElementById('productModal').classList.contains('active')) {
+            closeProductModal();
+          } else if (document.getElementById('salesModal').classList.contains('active')) {
+            closeSalesModal();
+          } else {
+            resetCart();
+          }
+        } else if (e.key === 'F2') {
+          e.preventDefault();
+          completePayment();
+        }
+      });
+
+      // 클릭 시 포커스 회복
+      document.body.addEventListener('click', (e) => {
+        if (!e.target.closest('input') && !e.target.closest('button') && !e.target.closest('.modal-card')) {
+          focusBarcodeInput();
+        }
+      });
+    }
+
+    // 바코드 스캔 처리
+    function handleScanBarcode(barcode) {
+      const product = products.find(p => p.barcode === barcode);
+      if (product) {
+        addToCart(product);
+        showToast(`'${product.name}' 추가됨`);
+      } else {
+        // 미등록 상품인 경우 알림 및 상품 등록 유도
+        if (confirm(`바코드 [${barcode}]는 등록되지 않은 상품입니다.\n지금 새 상품으로 등록하시겠습니까?`)) {
+          openProductModal();
+          document.getElementById('newProdBarcode').value = barcode;
+          document.getElementById('newProdName').focus();
+        }
+      }
+    }
+
+    // 장바구니에 상품 추가
+    function addToCart(product) {
+      const existing = cart.find(item => item.barcode === product.barcode);
+      if (existing) {
+        existing.qty += 1;
+      } else {
+        cart.push({
+          barcode: product.barcode,
+          name: product.name,
+          price: product.price,
+          qty: 1
+        });
+      }
+      renderCart();
+    }
+
+    // 수량 변경
+    function updateQty(barcode, delta) {
+      const item = cart.find(i => i.barcode === barcode);
+      if (!item) return;
+      item.qty += delta;
+      if (item.qty <= 0) {
+        cart = cart.filter(i => i.barcode !== barcode);
+      }
+      renderCart();
+    }
+
+    // 장바구니 품목 제거
+    function removeFromCart(barcode) {
+      cart = cart.filter(i => i.barcode !== barcode);
+      renderCart();
+    }
+
+    // 장바구니 비우기
+    function resetCart() {
+      if (cart.length === 0) return;
+      cart = [];
+      document.getElementById('receivedInput').value = '';
+      renderCart();
+      showToast('장바구니를 비웠습니다');
+      focusBarcodeInput();
+    }
+
+    // 장바구니 및 총액 렌더링
+    function renderCart() {
+      const tbody = document.getElementById('cartTableBody');
+      const emptyMsg = document.getElementById('emptyCartMessage');
+      tbody.innerHTML = '';
+
+      if (cart.length === 0) {
+        emptyMsg.style.display = 'flex';
+      } else {
+        emptyMsg.style.display = 'none';
+        cart.forEach(item => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>
+              <div class="item-name">${item.name}</div>
+              <div class="item-barcode">${item.barcode}</div>
+            </td>
+            <td class="price-col">${item.price.toLocaleString()} 율</td>
+            <td>
+              <div class="qty-control">
+                <button class="qty-btn" onclick="updateQty('${item.barcode}', -1)">-</button>
+                <span class="qty-val">${item.qty}</span>
+                <button class="qty-btn" onclick="updateQty('${item.barcode}', 1)">+</button>
+              </div>
+            </td>
+            <td class="price-col" style="text-align: right;">
+              ${(item.price * item.qty).toLocaleString()} 율
+            </td>
+          `;
+          tbody.appendChild(row);
+        });
+      }
+
+      // 합계 계산
+      const totalAmount = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+      const totalQty = cart.reduce((sum, item) => sum + item.qty, 0);
+
+      document.getElementById('summaryItemCount').innerText = `${cart.length} 종`;
+      document.getElementById('summaryTotalQty').innerText = `${totalQty} 개`;
+      document.getElementById('totalAmount').innerText = totalAmount.toLocaleString();
+
+      calculateChange();
+    }
+
+    // 빠른 상품 추천 칩 렌더링
+    function renderQuickChips() {
+      const container = document.getElementById('quickItemsContainer');
+      container.innerHTML = '';
+      products.slice(0, 6).forEach(p => {
+        const chip = document.createElement('div');
+        chip.className = 'quick-chip';
+        chip.innerHTML = `<span>${p.name}</span> <span style="color: var(--primary); font-weight:700;">${p.price}율</span>`;
+        chip.onclick = () => {
+          addToCart(p);
+          showToast(`'${p.name}' 추가됨`);
+          focusBarcodeInput();
+        };
+        container.appendChild(chip);
+      });
+    }
+
+    // 받은 금액 계산
+    function addReceived(amount) {
+      const input = document.getElementById('receivedInput');
+      const current = parseInt(input.value || '0', 10);
+      input.value = current + amount;
+      calculateChange();
+    }
+
+    function setExactAmount() {
+      const total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+      document.getElementById('receivedInput').value = total;
+      calculateChange();
+    }
+
+    function clearReceived() {
+      document.getElementById('receivedInput').value = '';
+      calculateChange();
+    }
+
+    // 거스름돈 계산 로직
+    function calculateChange() {
+      const total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+      const receivedVal = document.getElementById('receivedInput').value.trim();
+      const changeBox = document.getElementById('changeBox');
+      const changeTitle = document.getElementById('changeTitle');
+      const changeAmountEl = document.getElementById('changeAmount');
+
+      if (!receivedVal || total === 0) {
+        changeBox.className = 'change-box normal';
+        changeTitle.innerText = '거스름돈';
+        changeAmountEl.innerText = '0';
+        return;
+      }
+
+      const received = parseInt(receivedVal, 10);
+      const diff = received - total;
+
+      if (diff >= 0) {
+        changeBox.className = 'change-box ready';
+        changeTitle.innerText = '거슬러 줄 돈';
+        changeAmountEl.innerText = diff.toLocaleString();
+      } else {
+        changeBox.className = 'change-box shortage';
+        changeTitle.innerText = '부족한 금액';
+        changeAmountEl.innerText = Math.abs(diff).toLocaleString();
+      }
+    }
+
+    // 결제 완료 처리
+    function completePayment() {
+      if (cart.length === 0) {
+        alert('장바구니에 담긴 상품이 없습니다.');
+        focusBarcodeInput();
+        return;
+      }
+
+      const total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+      const receivedInput = document.getElementById('receivedInput');
+      const received = parseInt(receivedInput.value || '0', 10);
+
+      if (received < total) {
+        alert(`받은 화폐가 부족합니다! (${(total - received).toLocaleString()} 율 부족)`);
+        receivedInput.focus();
+        return;
+      }
+
+      const change = received - total;
+
+      // 판매 기록 저장
+      const orderRecord = {
+        id: 'ORD-' + Date.now(),
+        date: new Date().toISOString(),
+        items: [...cart],
+        itemSummary: cart.length === 1 ? cart[0].name : `${cart[0].name} 외 ${cart.length - 1}건`,
+        totalAmount: total,
+        receivedAmount: received,
+        changeAmount: change
+      };
+
+      salesHistory.unshift(orderRecord);
+      saveSales();
+
+      showToast(`결제 완료! 거스름돈: ${change.toLocaleString()} 율`);
+
+      // 초기화
+      cart = [];
+      receivedInput.value = '';
+      renderCart();
+      focusBarcodeInput();
+    }
+
+    // 토스트 알림창
+    function showToast(msg) {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = 'toast';
+      toast.innerText = msg;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transition = 'opacity 0.3s';
+        setTimeout(() => toast.remove(), 300);
+      }, 2000);
+    }
+
+    // 상품 관리 모달
+    function openProductModal() {
+      document.getElementById('productModal').classList.add('active');
+      renderProductList();
+    }
+
+    function closeProductModal() {
+      document.getElementById('productModal').classList.remove('active');
+      focusBarcodeInput();
+    }
+
+    function renderProductList() {
+      const tbody = document.getElementById('productListBody');
+      tbody.innerHTML = '';
+      document.getElementById('totalProductCount').innerText = products.length;
+
+      products.forEach((p, idx) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td style="padding: 10px 14px; font-family: monospace;">${p.barcode}</td>
+          <td style="padding: 10px 14px; font-weight: 600;">${p.name}</td>
+          <td style="padding: 10px 14px;">${p.price.toLocaleString()} 율</td>
+          <td style="padding: 10px 14px; text-align: right;">
+            <button class="btn btn-danger-weak" style="height: 30px; font-size: 12px; padding: 0 10px; border-radius: 6px;" onclick="deleteProduct(${idx})">삭제</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function handleCreateProduct(e) {
+      e.preventDefault();
+      const barcode = document.getElementById('newProdBarcode').value.trim();
+      const name = document.getElementById('newProdName').value.trim();
+      const price = parseInt(document.getElementById('newProdPrice').value, 10);
+      const category = document.getElementById('newProdCategory').value.trim() || '기타';
+
+      if (products.some(p => p.barcode === barcode)) {
+        alert('이미 등록된 바코드 번호입니다.');
+        return;
+      }
+
+      products.unshift({ barcode, name, price, category });
+      saveProducts();
+      renderProductList();
+
+      document.getElementById('newProductForm').reset();
+      showToast(`'${name}' 상품이 등록되었습니다.`);
+    }
+
+    function deleteProduct(index) {
+      if (confirm(`'${products[index].name}' 상품을 삭제하시겠습니까?`)) {
+        products.splice(index, 1);
+        saveProducts();
+        renderProductList();
+      }
+    }
+
+    // 매출 모달
+    function openSalesModal() {
+      document.getElementById('salesModal').classList.add('active');
+      renderSalesDashboard();
+    }
+
+    function closeSalesModal() {
+      document.getElementById('salesModal').classList.remove('active');
+      focusBarcodeInput();
+    }
+
+    function renderSalesDashboard() {
+      const totalRev = salesHistory.reduce((sum, o) => sum + o.totalAmount, 0);
+      document.getElementById('salesTotalRevenue').innerText = totalRev.toLocaleString();
+      document.getElementById('salesTotalOrders').innerText = salesHistory.length.toLocaleString();
+
+      const tbody = document.getElementById('salesHistoryBody');
+      tbody.innerHTML = '';
+
+      if (salesHistory.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 24px; color: var(--muted);">판매 내역이 없습니다.</td></tr>';
+        return;
+      }
+
+      salesHistory.forEach((o, idx) => {
+        const timeStr = new Date(o.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td style="padding: 10px 14px; color: var(--muted);">${timeStr}</td>
+          <td style="padding: 10px 14px; font-weight: 500;">${o.itemSummary}</td>
+          <td style="padding: 10px 14px; font-weight: 700; color: var(--primary);">${o.totalAmount.toLocaleString()} 율</td>
+          <td style="padding: 10px 14px; text-align: right;">
+            <button class="btn btn-danger-weak" style="height: 28px; font-size: 11px; padding: 0 8px; border-radius: 6px;" onclick="cancelSale(${idx})">취소</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function cancelSale(index) {
+      if (confirm('이 결제 건을 취소(환불)하시겠습니까?')) {
+        salesHistory.splice(index, 1);
+        saveSales();
+        renderSalesDashboard();
+        showToast('결제가 취소되었습니다.');
+      }
+    }
+
+    function exportSalesCSV() {
+      if (salesHistory.length === 0) {
+        alert('내보낼 판매 내역이 없습니다.');
+        return;
+      }
+
+      let csv = '\uFEFF결제ID,일시,판매품목요약,결제금액(율),받은금액(율),거스름돈(율)\n';
+      salesHistory.forEach(o => {
+        csv += `"${o.id}","${new Date(o.date).toLocaleString()}","${o.itemSummary}",${o.totalAmount},${o.receivedAmount},${o.changeAmount}\n`;
+      });
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `푸르미문구점_매출내역_${new Date().toISOString().slice(0,10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    // 앱 실행
+    window.onload = initApp;
+  </script>
+</body>
+</html>
